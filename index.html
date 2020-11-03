@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Lab 6 map 1</title>
+		<link rel="icon" href="favicon.png" >
+		<!-- Load c3.css -->
+		<link href="https://cdnjs.cloudflare.com/ajax/libs/c3/0.7.20/c3.css" rel="stylesheet">
+		<!-- Leaflet Css-->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+        integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+        crossorigin=""/>
+		<!-- Ensure cross platform compatibility -->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+		<!-- Style -->
+		<!-- Better Scale Css-->
+		<link rel="stylesheet" href="plugins/better-scale/L.Control.BetterScale.css" />
+		<!--North Arrow -->
+		<link rel="stylesheet" href="plugins/north-arrow/L.Control.Rose.css" />
+		<style>
+			body {
+				padding: 0;
+				margin: 0;
+			}
+			html, body, #mymap {
+				height: 100%;
+				width: 100vw;
+			}
+			.row{
+				width: 200px;
+				margin-left: -15px;
+				margin-right: -15px;
+				margin-bottom: -10px;
+			}
+			
+			.column-1{
+				margin: 3px;
+				padding: 1px;
+			}
+			.column-2{
+				z-index:0;
+				width: 100%;
+			}
+			.row:after {
+			  content: "";
+			  clear: both;
+			}
+			.description{
+				font-size: 90%;
+			}
+			.legend {
+				padding: 6px 8px;
+				line-height: 18px;
+				background: rgba(255,255,255,0.9);
+				box-shadow: 0 0 15px rgba(0,0,0,0.2);
+				border-radius: 5px;
+			}
+
+			/* Optional: adjust the values below to change the appearance of the legend color boxes */
+			.legend i {
+				width: 15px;
+				height: 15px;
+				float: left;
+				margin-right: 8px;
+				opacity: 0.7;
+			}
+			.titleDiv {
+				padding: 6px;
+				background: rgba(255,255,255,0.9);
+				box-shadow: 0 0 15px rgba(0,0,0,0.2);
+				border-radius: 2px;
+			}
+			
+		</style>
+    </head>
+
+    <body>
+		<!--Map-->
+		<div id="mymap"></div>
+		<div id="chart"></div>
+		<!--Noth Arrow -->
+		<div id="rose"></div>
+		<!-- Java Scripts-->
+		<!-- Load animation tweening library requirement for CanvasFlowMapLayer -->
+		<script src="https://unpkg.com/@tweenjs/tween.js@18.5.0/dist/tween.umd.js"></script>
+		<!-- Load d3.js and c3.js -->
+		<script src="https://d3js.org/d3.v5.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/c3/0.7.20/c3.min.js"></script>
+		<!-- Leaflet js-->
+		<script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+        integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+        crossorigin=""></script>
+		<!-- Better Scale Js-->
+		<script src="plugins/better-scale/L.Control.BetterScale.js"></script>
+		<!--Canvas flow chart plugin-->
+		<script src="plugins/canvas-flow/CanvasFlowmapLayer.js"></script>
+		<!--North Arrow -->
+		<script src="plugins/north-arrow/L.Control.Rose.js"></script>
+		<!--Crime Rate Data -->
+		<script type="text/javascript" src="data/county.js"></script>
+		<!--Map Data -->
+		<script type="text/javascript">
+			var Jawg_Matrix = L.tileLayer('https://{s}.tile.jawg.io/jawg-matrix/{z}/{x}/{y}{r}.png?access-token={accessToken}', {
+				attribution: '<a href="http://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+				minZoom: 0,
+				maxZoom: 22,
+				subdomains: 'abcd',
+				accessToken: 'XtidJ8DmagbIe4pQL2VlUdo55zeODRpHFd2jaQjOEGOVDA5jgsXLyx3tAXirPjJd'
+			});
+			
+			var OpenStreetMap_Mapnik = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				maxZoom: 19,
+				attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+			});
+			
+			//Tutorial Layer - Obtained from leaflet map
+			var tutorialLayer = L.tileLayer('http://tile.stamen.com/toner/{z}/{x}/{y}.png', {
+					attribution: 'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+					maxZoom: 18,
+					minZoom: 1
+				});
+			//Tutorial Layer - Obtained from assignment
+			var assigmentLayer = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+				attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+				maxZoom: 18,
+				id: 'mapbox.satellite',
+				accessToken: 'pk.eyJ1Ijoia2VpMTEwIiwiYSI6ImNqcmczdWJzNzFpOXk0NHA0ZDdwaThyZmgifQ.SN2dLbaBpbdlJyE5OCmndQ'
+			});
+			//cartodb layer
+			var cartodb = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+			   attribution: 'Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+			   maxZoom: 11,
+			   minZoom: 2
+			 });
+			 
+			 
+			//canvas js
+			var canvasFlow = L.canvasFlowmapLayer(counties,
+				{
+					//data is the variable name I used for defining the cook.js data
+					originAndDestinationFieldIds: {
+					originUniqueIdField: 'FIPSCodeB',  //origin ID, use GEOID_B if you want to reverse the flow
+						originGeometry: { //origin coordinates - Cook County as outflow is being mapped in the example
+							x: 'A_longitude',
+							y: 'A_latitude'
+						},
+						destinationUniqueIdField: 'FIPSCodeA', //destination ID
+						destinationGeometry: { //destination coordinates
+							x: 'B_longitude',
+							y: 'B_latitude'
+						}
+					},
+					canvasBezierStyle: {
+						type: 'classBreaks',
+						field: 'FLOW_BA',
+						classBreakInfos: [{
+								classMinValue: 0,
+								classMaxValue: 1677,
+								symbol: {
+									strokeStyle: '#8cfdff',
+									lineWidth: 1,
+									lineCap: 'round',
+									shadowColor: '#8cfdff',
+									shadowBlur: 1.5
+								}
+							}, {
+								classMinValue: 1677,
+								classMaxValue: 1768,
+								symbol: {
+									strokeStyle: '#ff8cfd',
+									lineWidth: 2,
+									lineCap: 'round',
+									shadowColor: '#ff8cfd',
+									shadowBlur: 1.5
+								}
+							}, {
+								classMinValue: 1768,
+								classMaxValue: 1809,
+								symbol: {
+									strokeStyle: '#ffd78c',
+									lineWidth: 4,
+									lineCap: 'round',
+									shadowColor: '#ffd78c',
+									shadowBlur: 1.5
+								}
+							}, {
+								classMinValue: 1809,
+								classMaxValue: 6008,
+								symbol: {
+								strokeStyle: '#8cb2ff',
+								lineWidth: 6,
+								lineCap: 'round',
+								shadowColor: '#8cb2ff',
+								shadowBlur: 1.5
+								}
+							}],
+							// the layer will use the defaultSymbol if a data value doesn't fit
+							// in any of the defined classBreaks
+							defaultSymbol: {
+								strokeStyle: '#e7e1ef',
+								lineWidth: 0.5,
+								lineCap: 'round',
+								shadowColor: '#e7e1ef',
+								shadowBlur: 1.5
+							},
+					},
+					
+					animatedCanvasBezierStyle: {
+						type: 'simple',
+						symbol: {
+						// use canvas styling options (compare to CircleMarker styling below)
+							strokeStyle: 'rgb(255, 46, 88)',
+							lineWidth: 3,
+							lineDashOffsetSize: 4, // custom property used with animation sprite sizes
+							lineCap: 'round',
+							shadowColor: 'rgb(255, 0, 51)',
+							shadowBlur: 2
+						}
+					},
+
+					// Some options to customize the flow map, check out the link below for more
+					// https://github.com/jwasilgeo/Leaflet.Canvas-Flowmap-Layer#options-and-property-summary
+					pathDisplayMode: 'all',
+					animationStarted: true,
+					animationEasingFamily: 'Cubic', // Compare the options:
+					// https://jwasilgeo.github.io/Leaflet.Canvas-Flowmap-Layer/docs/comparison/
+					animationEasingType: 'In',
+					animationDuration: 2000  // in millisecond, the larger the number the slower
+				}
+			);
+			
+			canvasFlow.on('click', function(e) {
+				console.log(e.layer.feature.properties);
+				
+			});
+			//map
+			var map = L.map('mymap', {
+				center: [39.2880922,-100.7323497],
+				zoom: 4,
+				layers: [cartodb, canvasFlow] //add to map
+			});
+			map.fitBounds((L.geoJson(counties)).getBounds());
+			
+			var baseMaps = {
+				"Carto DB": cartodb,
+				"Jawg Matrix": Jawg_Matrix,
+				"OSM Mapnik": OpenStreetMap_Mapnik
+			};
+			var overlayMaps = {
+				"Population" : canvasFlow,
+			};
+			
+			function getColor(B2A) {
+				return B2A > 1809 ? '#8cb2ff':
+					   B2A > 1768  ? '#ffd78c':
+					   B2A > 1677  ? '#ff8cfd':
+					   B2A > 1525  ? '#8cfdff':
+									 '#fef0d9';
+			}
+			
+			var legend = L.control({position: 'bottomright'});
+			legend.onAdd = function (map) {
+
+				var div = L.DomUtil.create('div', 'legend'); 
+				var grades = [1525, 1677, 1768, 1809];
+				
+				div.innerHTML = '<h5><b>Net migration</b></h5>';
+
+				for (var i = 0; i < grades.length; i++) {
+					div.innerHTML +=
+					'<i style="background:' + getColor(grades[i] + 1) + '"></i>' +
+					grades[i] + (grades[i + 1] ? ' &ndash; ' + grades[i + 1] + '</br>' : '+');
+				}
+
+				return div;
+			};
+			legend.addTo(map);
+			
+			var titleDiv = L.control({position: 'topright'});
+			titleDiv.onAdd = function (map){
+				var titleText = L.DomUtil.create('div', 'titleDiv');
+				titleText.innerHTML = '<h4>TOP 10 county level net migration in U.S</h4>';
+				return titleText;
+			};
+			titleDiv.addTo(map);
+			// Removing the legend when the layer is removed
+			map.on('overlayremove', function(eventLayer){
+			  if (eventLayer.name == 'Annual Crimes'){ // We use the key/display name to refer to the layer
+				map.removeControl(legend); // legend is the variable name of the layer legend
+			  }
+			});
+
+			// Adding the legend when the layer is added
+			map.on('overlayadd', function(eventLayer){
+			  if (eventLayer.name == 'Annual Crimes'){
+				legend.addTo(map);
+			  }
+			});
+			//Layer Control -- Legend
+			L.control.layers(baseMaps, overlayMaps).addTo(map);
+			//Better Scale Plugin
+			L.control.betterscale().addTo(map);
+			//rose north arrow
+			var rose = L.control.rose('rose', {position:'bottomleft', icon:'inner', iSize:'xsmall', opacity:0.8});
+			rose.addTo(map);
+			//Title
+			
+		</script>
+    </body>
+</html>
